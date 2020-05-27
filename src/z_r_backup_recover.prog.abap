@@ -1,34 +1,14 @@
 *&---------------------------------------------------------------------*
 *& Report  ZCAS_R_BACKUP_RECOVER
 *&---------------------------------------------------------------------*
-"$. Version Notes
-*&---------------------------------------------------------------------*
-*& 14.09.2018-01 (MRaht)
-*& [NEW] Initial Release
-*&
-*& 18.04.2019-01 (MRaht)
-*& [FIX] Wrong pathname for server path to download recovery file to
-*&       SAP server.
-*&
-*& 24.04.2019-01 (MRaht)
-*& [FIX] Import of recovery transport failed due to missing value for
-*&       target client.
-*& [OPT] Improved information for user after import of recovery
-*&       transport.
-*& [NEW] Change original system and the original language of development
-*&       objects to enable the possibility to change the development
-*&       objects.
-*& [NEW] Generate object list for each package after import of recovery
-*&       transport.
-*&---------------------------------------------------------------------*
-
 REPORT z_r_backup_recover.
 
 "$. Region Declarations
 
 CONTROLS: main_tabstrip TYPE TABSTRIP.
 
-CONSTANTS: cv_container_name    TYPE scrfname VALUE 'BCALV_BACKUP_0100_CONT1',
+CONSTANTS: cv_backup_clnt_dir   TYPE saepfad VALUE 'C:\Backup',
+           cv_container_name    TYPE scrfname VALUE 'BCALV_BACKUP_0100_CONT1',
            cv_default_trans_dir TYPE saepfad VALUE 'DIR_TRANS'.
 
 DATA: screen_id TYPE sy-dynnr,
@@ -41,12 +21,17 @@ DATA: gr_grid      TYPE REF TO cl_gui_alv_grid,
       gs_layout    TYPE lvc_s_layo,
       gt_fieldcat  TYPE lvc_t_fcat.
 
-DATA: gt_outtab  TYPE TABLE OF tadir,
-      gt_package TYPE TABLE OF tdevc. " dient nur als Schablone für Form-Parameter
+DATA: gs_request      TYPE e070,
+      gt_sub_requests TYPE trwbo_request_headers,
+      gt_outtab       TYPE TABLE OF tadir,
+      gt_package      TYPE TABLE OF tdevc. " dient nur als Schablone für Form-Parameter
 
 " Backup-Parameter
-DATA: p_backup_clnt_dir  TYPE saepfad VALUE 'C:\Backup',
-      p_backup_incl_subs TYPE abap_bool VALUE abap_false.
+DATA: p_backup_clnt_dir  TYPE saepfad VALUE cv_backup_clnt_dir,
+      p_backup_incl_subs TYPE abap_bool VALUE abap_false,
+      p_trkorr           TYPE e070-trkorr,
+      p_devclass         TYPE tadir-devclass,
+      p_chk_add_subs     TYPE abap_bool.
 
 " Recover-Parameter
 DATA: p_recover_file   TYPE saepfad,
@@ -82,6 +67,56 @@ ENDFORM.                    "init
 "$. Endregion Main
 
 "$. Region Modules
+
+MODULE on_value_request_trkorr INPUT.
+
+  DATA: lt_results TYPE STANDARD TABLE OF ddshretval WITH DEFAULT KEY.
+
+  SELECT FROM e070
+    FIELDS *
+    WHERE trstatus EQ 'D'
+      AND as4user  EQ @sy-uname
+      AND strkorr  EQ @space
+    INTO TABLE @DATA(lt_help_values).
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      ddic_structure = 'E070'
+      retfield       = 'TRKORR'
+      dynpprog       = sy-repid
+      dynpnr         = sy-dynnr
+      window_title   = 'Transport Request'
+      value_org      = 'S'
+    TABLES
+      value_tab      = lt_help_values
+      return_tab     = lt_results
+    EXCEPTIONS
+      OTHERS         = 1.
+
+  IF sy-subrc <> 0.
+    MESSAGE 'Build of Search Help-Pop Up failed.' TYPE 'E' DISPLAY LIKE 'I'.
+  ENDIF.
+
+  DATA(lt_dynpfields) = VALUE dynpread_tabtype( ( fieldname = 'E070-TRKORR'
+                                                  fieldvalue = VALUE #( lt_results[ 1 ]-fieldval OPTIONAL ) ) ).
+
+  CALL FUNCTION 'DYNP_VALUES_UPDATE'
+    EXPORTING
+      dyname               = sy-repid
+      dynumb               = sy-dynnr
+    TABLES
+      dynpfields           = lt_dynpfields
+    EXCEPTIONS
+      invalid_abapworkarea = 1
+      invalid_dynprofield  = 2
+      invalid_dynproname   = 3
+      invalid_dynpronummer = 4
+      invalid_request      = 5
+      no_fielddescription  = 6
+      undefind_error       = 7
+      OTHERS               = 8.
+
+ENDMODULE.
 
 *---------------------------------------------------------------------*
 *       MODULE PBO OUTPUT                                             *
@@ -196,6 +231,8 @@ MODULE pai_0100 INPUT.
   save_ok = ok_code.
   CLEAR ok_code.
 
+  PERFORM read_values.
+
   CASE save_ok.
     WHEN 'BACKUP_TAB' OR 'RECOVER_TAB'.
       main_tabstrip-activetab = save_ok.
@@ -293,22 +330,17 @@ ENDFORM.                    "backup_chs_des
 *&---------------------------------------------------------------------*
 FORM backup_add_devobjects.
 
-  DATA: ls_package_name TYPE dynpread,
-        ls_chk_add_subs TYPE dynpread,
-        ls_package      TYPE tdevc,
-        lt_package      TYPE TABLE OF tdevc.
+  DATA: ls_package TYPE tdevc,
+        lt_package TYPE TABLE OF tdevc.
 
   WHILE error EQ abap_false.
 
     CASE sy-index.
       WHEN 1.
-        PERFORM backup_check_package CHANGING ls_package_name
-                                              ls_chk_add_subs
-                                              ls_package.
+        PERFORM backup_check_package CHANGING ls_package.
 
       WHEN 2.
-        PERFORM backup_add_packages USING ls_package
-                                          ls_chk_add_subs.
+        PERFORM backup_add_packages USING ls_package.
 
       WHEN 3.
         PERFORM backup_add_devobj.
@@ -329,31 +361,13 @@ ENDFORM.                    "backup_add_devobjects
 *&---------------------------------------------------------------------*
 *       text
 *----------------------------------------------------------------------*
-FORM backup_check_package CHANGING ls_package_name TYPE dynpread
-                                   ls_chk_add_subs TYPE dynpread
-                                   ls_package      TYPE tdevc.
+FORM backup_check_package CHANGING ls_package TYPE tdevc.
 
   DATA: lt_prueba TYPE STANDARD TABLE OF dynpread,
         ls_prueba TYPE dynpread.
 
   TRY.
-      ls_prueba-fieldname = 'TADIR-DEVCLASS'.
-      APPEND ls_prueba TO lt_prueba.
-
-      ls_prueba-fieldname = 'P_BACKUP_INCL_SUBS'.
-      APPEND ls_prueba TO lt_prueba.
-
-      CALL FUNCTION 'DYNP_VALUES_READ'
-        EXPORTING
-          dyname     = sy-repid
-          dynumb     = '0101'
-        TABLES
-          dynpfields = lt_prueba.
-
-      READ TABLE lt_prueba INTO ls_package_name INDEX 1.
-      READ TABLE lt_prueba INTO ls_chk_add_subs INDEX 2.
-
-      IF ls_package_name-fieldvalue CO ' _0'.
+      IF p_devclass CO ' _0'.
 
         error = abap_true.
         MESSAGE 'Bitte erst den Namen eines Entwicklungsobjekts eingeben.' TYPE 'I' DISPLAY LIKE 'E'.
@@ -361,8 +375,10 @@ FORM backup_check_package CHANGING ls_package_name TYPE dynpread
 
       ENDIF.
 
-      SELECT SINGLE * FROM tdevc INTO ls_package
-        WHERE devclass EQ ls_package_name-fieldvalue.
+      SELECT SINGLE FROM tdevc
+        FIELDS *
+        WHERE devclass EQ @p_devclass
+        INTO @ls_package.
 
       IF ls_package IS INITIAL.
 
@@ -393,8 +409,7 @@ ENDFORM.                    "backup_check_package
 *&---------------------------------------------------------------------*
 *       text
 *----------------------------------------------------------------------*
-FORM backup_add_packages USING ls_package      TYPE tdevc
-                               ls_chk_add_subs TYPE dynpread.
+FORM backup_add_packages USING ls_package TYPE tdevc.
 
   DATA: lt_new_package     TYPE STANDARD TABLE OF tdevc,
         lt_new_package_tmp TYPE STANDARD TABLE OF tdevc,
@@ -464,13 +479,14 @@ FORM backup_add_packages USING ls_package      TYPE tdevc
       ENDIF.
 
       " Unterpakete berücksichtigen? (J/N)
-      IF ls_chk_add_subs-fieldvalue EQ abap_true.
+      IF p_chk_add_subs EQ abap_true.
 
         " Untergeordnete Pakete selektieren
-        SELECT * FROM tdevc
-          INTO TABLE lt_new_package_sub
-          WHERE parentcl EQ <ls_new_package>-devclass
-            AND as4user  NE 'SAP'.
+        SELECT FROM tdevc
+          FIELDS *
+          WHERE parentcl EQ @<ls_new_package>-devclass
+            AND as4user  NE 'SAP'
+          INTO TABLE @lt_new_package_sub.
 
         APPEND LINES OF lt_new_package_sub TO lt_new_package_tmp.
 
@@ -525,10 +541,11 @@ FORM backup_add_devobj.
 
   ENDIF.
 
-  SELECT * FROM tadir
-    INTO TABLE lt_devobj
-    WHERE devclass IN lt_r_package
-      AND author   NE 'SAP'.
+  SELECT FROM tadir
+    FIELDS *
+    WHERE devclass IN @lt_r_package
+      AND author   NE 'SAP'
+    INTO TABLE @lt_devobj.
 
   SORT lt_devobj BY obj_name ASCENDING.
   lv_no_outtab_before = lines( gt_outtab ).
@@ -613,6 +630,68 @@ FORM backup_del_devobjects USING selected TYPE abap_bool.
   PERFORM show_table.
 
 ENDFORM.                    "backup_del_devobjects
+
+FORM read_values.
+
+  CASE main_tabstrip-activetab.
+    WHEN 'BACKUP_TAB'.
+      DATA(lv_dynnr) = '0101'.
+      DATA(lt_dynpfields) = VALUE dynpread_tabtype( ( fieldname = 'P_BACKUP_CLNT_DIR' )
+                                                    ( fieldname = 'E070-TRKORR' )
+                                                    ( fieldname = 'TADIR-DEVCLASS' )
+                                                    ( fieldname = 'P_BACKUP_INCL_SUBS' ) ).
+
+    WHEN 'RECOVER_TAB'.
+      lv_dynnr = '0102'.
+      lt_dynpfields = VALUE #( ( fieldname = 'P_RECOVER_FILE' )
+                               ( fieldname = 'P_RECOVER_DIR' )
+                               ( fieldname = 'P_OVERWRITE_ORIG' ) ).
+
+  ENDCASE.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname               = sy-repid
+      dynumb               = lv_dynnr
+    TABLES
+      dynpfields           = lt_dynpfields
+    EXCEPTIONS
+      invalid_abapworkarea = 1
+      invalid_dynprofield  = 2
+      invalid_dynproname   = 3
+      invalid_dynpronummer = 4
+      invalid_request      = 5
+      no_fielddescription  = 6
+      invalid_parameter    = 7
+      undefind_error       = 8
+      double_conversion    = 9
+      stepl_not_found      = 10
+      OTHERS               = 11.
+
+  IF sy-subrc = 0.
+
+    p_backup_clnt_dir = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_CLNT_DIR'  ]-fieldvalue OPTIONAL ).
+    p_trkorr          = VALUE #( lt_dynpfields[ fieldname = 'E070-TRKORR'        ]-fieldvalue OPTIONAL ).
+    p_devclass        = VALUE #( lt_dynpfields[ fieldname = 'TADIR-DEVCLASS'     ]-fieldvalue OPTIONAL ).
+    p_chk_add_subs    = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_INCL_SUBS' ]-fieldvalue OPTIONAL ).
+    p_recover_file    = VALUE #( lt_dynpfields[ fieldname = 'P_RECOVER_FILE'     ]-fieldvalue OPTIONAL ).
+    p_recover_dir     = VALUE #( lt_dynpfields[ fieldname = 'P_RECOVER_DIR'      ]-fieldvalue OPTIONAL ).
+    p_overwrite_orig  = VALUE #( lt_dynpfields[ fieldname = 'P_OVERWRITE_ORIG'   ]-fieldvalue OPTIONAL ).
+
+    IF p_backup_clnt_dir CO ' _0'.
+      p_backup_clnt_dir = cv_backup_clnt_dir.
+    ENDIF.
+
+    IF p_recover_dir CO ' _0'.
+      CALL 'C_SAPGPARAM'
+        ID 'NAME'  FIELD cv_default_trans_dir
+        ID 'VALUE' FIELD p_recover_dir.
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+
 *&---------------------------------------------------------------------*
 *&      Form  BACKUP_EXECUTE
 *&---------------------------------------------------------------------*
@@ -620,8 +699,7 @@ FORM backup_execute.
 
   DATA: lt_prueba        TYPE STANDARD TABLE OF dynpread,
         ls_prueba        TYPE dynpread,
-        ls_target_system TYPE dynpread,
-        ls_new_request   TYPE trwbo_request_header.
+        ls_target_system TYPE dynpread.
 
   DATA: lv_srvr_file TYPE saepfad,
         lv_clnt_file TYPE saepfad.
@@ -630,55 +708,56 @@ FORM backup_execute.
   IF p_backup_clnt_dir IS INITIAL.
 
     error = abap_true.
-    MESSAGE 'Bitte geben Sie den lokalen Speicherort der Sicherungsdateien an.' TYPE 'I' DISPLAY LIKE 'E'.
+    MESSAGE |Bitte geben Sie den lokalen Speicherort der Sicherungsdateien an.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
-  ELSEIF gt_outtab IS INITIAL.
+  ELSEIF gt_outtab IS INITIAL
+     AND p_trkorr IS INITIAL.
 
     error = abap_true.
-    MESSAGE 'Bitte definieren Sie zu sichernde Entwicklungsobjekte.' TYPE 'I' DISPLAY LIKE 'E'.
+    MESSAGE |Bitte definieren Sie einen Transport oder zu sichernde Entwicklungsobjekte.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
+
+  gs_request-trkorr = p_trkorr.
 
   WHILE error EQ abap_false.
 
     CASE sy-index.
       WHEN 1.
-        PERFORM create_ta_request
-          CHANGING ls_new_request.
+        PERFORM create_tr.
 
       WHEN 2.
-        PERFORM append_to_ta_request
-          USING ls_new_request-trkorr.
+        PERFORM append_devobjs_to_tr.
 
       WHEN 3.
-        PERFORM release_ta_request
-          USING ls_new_request-trkorr.
+        PERFORM read_tr.
 
       WHEN 4.
-        PERFORM remove_ta_from_queue
-          USING ls_new_request-trkorr.
+        PERFORM release_tr.
 
       WHEN 5.
-        PERFORM backup_download_files
-          USING lv_srvr_file
-                lv_clnt_file
-                ls_new_request-trkorr.
+        PERFORM remove_tr_from_queue.
 
       WHEN 6.
-        MESSAGE 'Backup wurde erfolgreich erstellt.' TYPE 'S'.
+        PERFORM backup_download_files
+          USING lv_srvr_file
+                lv_clnt_file.
+
+      WHEN 7.
+        MESSAGE |Backup wurde erfolgreich erstellt.| TYPE 'S'.
         EXIT.
 
     ENDCASE.
 
   ENDWHILE.
 
-  IF ls_new_request-trkorr CN ' _0'.
+  IF gs_request-trkorr CN ' _0'.
 
     CALL FUNCTION 'DEQUEUE_E_TRKORR'
       EXPORTING
-        trkorr = ls_new_request-trkorr.
+        trkorr = gs_request-trkorr.
 
   ENDIF.
 
@@ -687,8 +766,7 @@ ENDFORM.                    "backup_execute
 *&      Form  BACKUP_DOWNLOAD_FILES
 *&---------------------------------------------------------------------*
 FORM backup_download_files USING lv_srvr_file TYPE saepfad
-                                 lv_clnt_file TYPE saepfad
-                                 lv_trkorr    TYPE trkorr.
+                                 lv_clnt_file TYPE saepfad.
 
   DATA: lv_index  TYPE i,
         lv_length TYPE i,
@@ -703,9 +781,9 @@ FORM backup_download_files USING lv_srvr_file TYPE saepfad
         lv_sub_dir         TYPE saepfad,
         lv_backup_srvr_dir TYPE saepfad VALUE cv_default_trans_dir.
 
-  lv_length = strlen( lv_trkorr ).
-  lv_trkorr = lv_trkorr+4(lv_length).
-  CONCATENATE lv_trkorr '.' sy-sysid INTO lv_ta_name. " 123456.T70
+  lv_length = strlen( gs_request-trkorr ).
+  gs_request-trkorr = gs_request-trkorr+4(lv_length).
+  CONCATENATE gs_request-trkorr '.' sy-sysid INTO lv_ta_name. " 123456.T70
 
   CALL 'C_SAPGPARAM' ID 'NAME'  FIELD lv_backup_srvr_dir
                      ID 'VALUE' FIELD lv_backup_srvr_dir.
@@ -759,7 +837,7 @@ FORM backup_download_files USING lv_srvr_file TYPE saepfad
     IF sy-subrc <> 0.
 
       error = abap_true.
-      MESSAGE 'Die Datei-Übertragung ist fehlgeschlagen!' TYPE 'I' DISPLAY LIKE 'E'.
+      MESSAGE |Die Datei-Übertragung ist fehlgeschlagen!| TYPE 'I' DISPLAY LIKE 'E'.
       RETURN.
 
     ENDIF.
@@ -793,14 +871,14 @@ FORM recover_execute.
     AND p_recover_file NP '+:/*.*'. " Bsp.: C:/R123456.IP3
 
     error = abap_true.
-    MESSAGE 'Bitte geben Sie den lokalen Speicherort der Wiederherstellungsdatei an.' TYPE 'I' DISPLAY LIKE 'E'.
+    MESSAGE |Bitte geben Sie den lokalen Speicherort der Wiederherstellungsdatei an.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ELSEIF p_recover_dir CO ' _0'
       OR p_recover_dir NA '\/'.
 
     error = abap_true.
-    MESSAGE 'Bitte geben Sie den internen Pfad zum Wiederherstellungsordner an.' TYPE 'I' DISPLAY LIKE 'E'.
+    MESSAGE |Bitte geben Sie den internen Pfad zum Wiederherstellungsordner an.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
@@ -839,7 +917,7 @@ FORM recover_execute.
           USING ls_request.
 
       WHEN 7.
-        MESSAGE 'Wiederherstellung wurde erfolgreich durchgeführt.' TYPE 'S'.
+        MESSAGE |Wiederherstellung wurde erfolgreich durchgeführt.| TYPE 'S'.
         EXIT.
 
     ENDCASE.
@@ -909,7 +987,7 @@ FORM recover_chs_des.
       canceled_by_user = 1
       OTHERS           = 2.
 
-  IF sy-subrc <> 0
+  IF   sy-subrc <> 0
     OR p_recover_dir CO ' _0'.
 
     p_recover_dir = lv_sap_dir.
@@ -1026,7 +1104,7 @@ FORM recover_upload_files USING lv_clnt_k_file TYPE saepfad
       IF sy-subrc <> 0.
 
         error = abap_true.
-        MESSAGE 'Die Datei-Übertragung ist fehlgeschlagen!' TYPE 'I' DISPLAY LIKE 'E'.
+        MESSAGE |Die Datei-Übertragung ist fehlgeschlagen!| TYPE 'I' DISPLAY LIKE 'E'.
         RETURN.
 
       ENDIF.
@@ -1054,10 +1132,7 @@ FORM change_original_system USING    lv_trkorr  TYPE trkorr
   DATA: lt_r_objname TYPE RANGE OF trobj_name,
         ls_r_objname LIKE LINE OF  lt_r_objname.
 
-  DATA: lt_tadir TYPE TABLE OF tadir.
-
-  FIELD-SYMBOLS: <ls_object> TYPE trwbo_s_e071,
-                 <ls_tadir>  TYPE tadir.
+  FIELD-SYMBOLS: <ls_object> TYPE trwbo_s_e071.
 
   ls_request-h-trkorr = lv_trkorr.
 
@@ -1077,12 +1152,7 @@ FORM change_original_system USING    lv_trkorr  TYPE trkorr
   IF sy-subrc <> 0.
 
     error = abap_true.
-
-    CONCATENATE 'TA' lv_trkorr 'konnte nicht ausgelesen werden.'
-      INTO lv_msg_text SEPARATED BY space.
-
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    MESSAGE |TA { lv_trkorr } konnte nicht ausgelesen werden.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
@@ -1096,18 +1166,19 @@ FORM change_original_system USING    lv_trkorr  TYPE trkorr
 
   ENDLOOP.
 
-  SELECT * FROM tadir
-    INTO TABLE lt_tadir
-    WHERE obj_name   IN lt_r_objname
-      AND (    masterlang NE sy-langu
-            OR srcsystem  NE sy-sysid ).
+  SELECT FROM tadir
+    FIELDS object, obj_name, pgmid
+    WHERE obj_name   IN @lt_r_objname
+      AND (    masterlang NE @sy-langu
+            OR srcsystem  NE @sy-sysid )
+    INTO TABLE @DATA(lt_tadir).
 
   CHECK lt_tadir IS NOT INITIAL.
 
   lv_srcsystem = sy-sysid.
 
   " Über importierte Entwicklungsobjekte laufen und SRCSYSTEM und MASTERLANG ändern
-  LOOP AT lt_tadir ASSIGNING <ls_tadir>.
+  LOOP AT lt_tadir ASSIGNING FIELD-SYMBOL(<ls_tadir>).
 
     CALL FUNCTION 'TRINT_TADIR_MODIFY'
       EXPORTING
@@ -1194,15 +1265,17 @@ ENDFORM.                    "show_table
 *&---------------------------------------------------------------------*
 *&      Form  CREATE_TA_REQUEST
 *&---------------------------------------------------------------------*
-FORM create_ta_request CHANGING ls_new_request TYPE trwbo_request_header.
+FORM create_tr.
 
   DATA: lv_request_type LIKE e070-trfunction,
         lv_as4text      TYPE e07t-as4text,
-        lv_target       TYPE e070-tarsystem.
+        lv_target       TYPE e070-tarsystem,
+        ls_new_tr       TYPE trwbo_request_header.
 
-  lv_request_type = 'T'.
-  CONCATENATE sy-sysid ':' INTO lv_as4text.
-  CONCATENATE lv_as4text 'Quellcode-Backup' INTO lv_as4text SEPARATED BY space.
+  CHECK p_trkorr IS INITIAL.
+
+  lv_request_type = 'T'. " Transport of Copies
+  lv_as4text = |{ sy-sysid }: Backup { sy-datum } { sy-uzeit }|.
   lv_target = sy-sysid.
 
   CALL FUNCTION 'TR_INSERT_REQUEST_WITH_TASKS'
@@ -1212,7 +1285,7 @@ FORM create_ta_request CHANGING ls_new_request TYPE trwbo_request_header.
       iv_target          = lv_target
       iv_with_badi_check = abap_true
     IMPORTING
-      es_request_header  = ls_new_request
+      es_request_header  = ls_new_tr
     EXCEPTIONS
       insert_failed      = 1
       enqueue_failed     = 2
@@ -1221,18 +1294,18 @@ FORM create_ta_request CHANGING ls_new_request TYPE trwbo_request_header.
   IF sy-subrc <> 0.
 
     error = abap_true.
-    MESSAGE 'Fehler beim Anlegen eines TAs.' TYPE 'I' DISPLAY LIKE 'E'.
+    MESSAGE |Fehler beim Anlegen eines TAs.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
+
+  MOVE-CORRESPONDING ls_new_tr TO gs_request.
 
 ENDFORM.                    "create_ta_request
 *&---------------------------------------------------------------------*
 *&      Form  APPEND_TO_TA_REQUEST
 *&---------------------------------------------------------------------*
-FORM append_to_ta_request USING lv_trkorr TYPE trkorr.
-
-  DATA: lv_msg_text TYPE c LENGTH 300.
+FORM append_devobjs_to_tr.
 
   DATA: ls_e071  TYPE trwbo_s_e071,
         lt_e071  TYPE trwbo_t_e071,
@@ -1243,9 +1316,11 @@ FORM append_to_ta_request USING lv_trkorr TYPE trkorr.
 
   FIELD-SYMBOLS: <ls_outtab> TYPE tadir.
 
+  CHECK p_trkorr IS INITIAL.
+
   CALL FUNCTION 'ENQUEUE_E_TRKORR'
     EXPORTING
-      trkorr         = lv_trkorr
+      trkorr         = gs_request-trkorr
     EXCEPTIONS
       foreign_lock   = 1
       system_failure = 2.
@@ -1253,13 +1328,8 @@ FORM append_to_ta_request USING lv_trkorr TYPE trkorr.
   IF sy-subrc <> 0.
 
     error = abap_true.
-
-    CONCATENATE 'Fehler beim Sperren des TAs ' lv_trkorr
-      '. Bitte in der SE01 -> ' sy-uname ' den TA manuell löschen!'
-      INTO lv_msg_text.
-
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    MESSAGE |Fehler beim Sperren des TAs { gs_request-trkorr }.| &&
+            |Bitte in der SE01 -> { sy-uname } den TA manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
@@ -1277,7 +1347,7 @@ FORM append_to_ta_request USING lv_trkorr TYPE trkorr.
   CALL FUNCTION 'TRINT_APPEND_TO_COMM_ARRAYS'
     EXPORTING
       wi_error_table     = abap_true
-      wi_trkorr          = lv_trkorr
+      wi_trkorr          = gs_request-trkorr
       iv_append_at_order = abap_true
     TABLES
       wt_e071            = lt_e071
@@ -1287,13 +1357,8 @@ FORM append_to_ta_request USING lv_trkorr TYPE trkorr.
   IF sy-subrc <> 0.
 
     error = abap_true.
-
-    CONCATENATE 'Fehler beim Hinzufügen der Objekte zum TA ' lv_trkorr
-      '. Bitte in der SE01 -> ' sy-uname ' den TA manuell löschen!'
-      INTO lv_msg_text.
-
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    MESSAGE |Fehler beim Hinzufügen der Objekte zum TA { gs_request-trkorr }.| &&
+            |Bitte in der SE01 -> { sy-uname } den TA manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ELSE.
@@ -1304,92 +1369,118 @@ FORM append_to_ta_request USING lv_trkorr TYPE trkorr.
 
 ENDFORM.                    "append_to_ta_request
 
-*&---------------------------------------------------------------------*
-*&      Form  RELEASE_TA_REQUEST
-*&---------------------------------------------------------------------*
-FORM release_ta_request USING lv_trkorr TYPE trkorr.
+FORM read_tr.
 
-  DATA: lv_msg_text TYPE c LENGTH 300.
+  CALL FUNCTION 'TR_READ_REQUEST_WITH_TASKS'
+    EXPORTING
+      iv_trkorr          = gs_request-trkorr
+    IMPORTING
+      et_request_headers = gt_sub_requests
+    EXCEPTIONS
+      invalid_input      = 1
+      OTHERS             = 2.
 
-  " Hinweis: Parameter iv_without_locking
-  " in früheren Releases nicht verfügbar!
-  TRY.
-      CALL FUNCTION 'TR_RELEASE_REQUEST'
-        EXPORTING
-          iv_trkorr                  = lv_trkorr
-          iv_dialog                  = abap_false
-          iv_success_message         = abap_false
-          iv_without_locking         = abap_true
-        EXCEPTIONS
-          cts_initialization_failure = 1
-          enqueue_failed             = 2
-          no_authorization           = 3
-          invalid_request            = 4
-          request_already_released   = 5
-          repeat_too_early           = 6
-          error_in_export_methods    = 7
-          object_check_error         = 8
-          docu_missing               = 9
-          db_access_error            = 10
-          action_aborted_by_user     = 11
-          export_failed              = 12
-          OTHERS                     = 13.
-
-    CATCH cx_root.
-      CALL FUNCTION 'TR_RELEASE_REQUEST'
-        EXPORTING
-          iv_trkorr                  = lv_trkorr
-          iv_dialog                  = abap_false
-          iv_success_message         = abap_false
-        EXCEPTIONS
-          cts_initialization_failure = 1
-          enqueue_failed             = 2
-          no_authorization           = 3
-          invalid_request            = 4
-          request_already_released   = 5
-          repeat_too_early           = 6
-          error_in_export_methods    = 7
-          object_check_error         = 8
-          docu_missing               = 9
-          db_access_error            = 10
-          action_aborted_by_user     = 11
-          export_failed              = 12
-          OTHERS                     = 13.
-
-  ENDTRY.
+  gs_request = VALUE #( gt_sub_requests[ trkorr = gs_request-trkorr ] OPTIONAL ).
+  DELETE gt_sub_requests WHERE trkorr EQ gs_request-trkorr.
 
   IF sy-subrc <> 0.
 
     error = abap_true.
+    MESSAGE |Fehler beim Lesen des TAs { gs_request-trkorr } (sy-subrc = { sy-subrc }).| TYPE 'I' DISPLAY LIKE 'E'.
+    RETURN.
 
-    CONCATENATE 'TA' lv_trkorr 'konnte nicht freigegeben werden.'
-      'Bitte in der SE01 ->' sy-uname 'den TA manuell löschen!'
-      INTO lv_msg_text SEPARATED BY space.
+  ELSEIF gs_request-strkorr IS NOT INITIAL.
 
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    error = abap_true.
+    MESSAGE |Untergeordnete TAs werden nicht unterstützt! Der TA { gs_request-trkorr } | &&
+            |ist dem TA { gs_request-strkorr } untergeordnet.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  RELEASE_TA_REQUEST
+*&---------------------------------------------------------------------*
+FORM release_tr.
+
+  DATA(lt_requests) = VALUE trwbo_request_headers( ( CORRESPONDING #( gs_request ) ) ).
+  APPEND LINES OF gt_sub_requests TO lt_requests.
+
+  SORT lt_requests BY strkorr DESCENDING.
+
+  LOOP AT lt_requests ASSIGNING FIELD-SYMBOL(<ls_request>).
+
+    TRY.
+        CALL FUNCTION 'TR_RELEASE_REQUEST'
+          EXPORTING
+            iv_trkorr                  = <ls_request>-trkorr
+            iv_dialog                  = abap_false
+            iv_success_message         = abap_false
+            iv_without_locking         = abap_true " wasn't available in earlier releases!
+          EXCEPTIONS
+            cts_initialization_failure = 1
+            enqueue_failed             = 2
+            no_authorization           = 3
+            invalid_request            = 4
+            request_already_released   = 5
+            repeat_too_early           = 6
+            error_in_export_methods    = 7
+            object_check_error         = 8
+            docu_missing               = 9
+            db_access_error            = 10
+            action_aborted_by_user     = 11
+            export_failed              = 12
+            OTHERS                     = 13.
+
+      CATCH cx_root.
+        CALL FUNCTION 'TR_RELEASE_REQUEST'
+          EXPORTING
+            iv_trkorr                  = <ls_request>-trkorr
+            iv_dialog                  = abap_false
+            iv_success_message         = abap_false
+          EXCEPTIONS
+            cts_initialization_failure = 1
+            enqueue_failed             = 2
+            no_authorization           = 3
+            invalid_request            = 4
+            request_already_released   = 5
+            repeat_too_early           = 6
+            error_in_export_methods    = 7
+            object_check_error         = 8
+            docu_missing               = 9
+            db_access_error            = 10
+            action_aborted_by_user     = 11
+            export_failed              = 12
+            OTHERS                     = 13.
+
+    ENDTRY.
+
+    IF sy-subrc <> 0.
+
+      error = abap_true.
+      MESSAGE |TA { <ls_request>-trkorr } konnte nicht freigegeben werden.| &&
+              |Bitte in der SE01 -> { sy-uname } den TA ggf. manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
+      RETURN.
+
+    ENDIF.
+
+  ENDLOOP.
 
 ENDFORM.                    "release_ta_request
 *&---------------------------------------------------------------------*
 *&      Form  REMOVE_TA_FROM_QUEUE
 *&---------------------------------------------------------------------*
-FORM remove_ta_from_queue USING lv_trkorr TYPE trkorr.
+FORM remove_tr_from_queue.
 
-  DATA: lv_system  LIKE tmscsys-sysnam,
-        lv_command LIKE stpa-command.
+  DATA: lv_command LIKE stpa-command.
 
   DATA: lv_lines         TYPE p DECIMALS 0,
         lv_counter       TYPE i VALUE 0,
         lv_current_retry TYPE i VALUE 0,
         lv_max_retry     TYPE i VALUE 60,
         lv_interval      TYPE i VALUE 5.
-
-  DATA: lv_msg_text TYPE c LENGTH 300.
-
-  lv_system = sy-sysid.
 
   WHILE lv_counter = 0
     AND lv_current_retry <= lv_max_retry.
@@ -1404,8 +1495,8 @@ FORM remove_ta_from_queue USING lv_trkorr TYPE trkorr.
 
     CALL FUNCTION 'TMS_MGR_GREP_TRANSPORT_QUEUE'
       EXPORTING
-        iv_system                = lv_system
-        iv_request               = lv_trkorr
+        iv_system                = gs_request-tarsystem
+        iv_request               = gs_request-trkorr
         iv_refresh_queue         = abap_true
         iv_without_cache         = abap_true
         iv_completed_requests    = abap_true
@@ -1423,12 +1514,8 @@ FORM remove_ta_from_queue USING lv_trkorr TYPE trkorr.
   IF lv_counter = 0.
 
     error = abap_true.
-
-    CONCATENATE 'Fehler beim Auslesen des TAs' lv_trkorr
-      'aus der Import-Queue: Bitte in der STMS ->' lv_system 'den TA manuell löschen!'
-      INTO lv_msg_text SEPARATED BY space.
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    MESSAGE |Fehler beim Auslesen des TAs { gs_request-trkorr } aus der Import-Queue: | &&
+            |Bitte in der STMS -> { gs_request-tarsystem } den TA manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
@@ -1440,8 +1527,8 @@ FORM remove_ta_from_queue USING lv_trkorr TYPE trkorr.
   CALL FUNCTION 'TMS_MGR_MAINTAIN_TR_QUEUE'
     EXPORTING
       iv_command                 = lv_command
-      iv_system                  = lv_system
-      iv_request                 = lv_trkorr
+      iv_system                  = gs_request-tarsystem
+      iv_request                 = gs_request-trkorr
       iv_monitor                 = abap_true
     EXCEPTIONS
       read_config_failed         = 1
@@ -1451,12 +1538,8 @@ FORM remove_ta_from_queue USING lv_trkorr TYPE trkorr.
   IF sy-subrc <> 0.
 
     error = abap_true.
-
-    CONCATENATE 'Fehler beim Löschen des TAs' lv_trkorr
-      'aus der Import-Queue: Bitte in der STMS ->' lv_system 'den TA manuell löschen!'
-      INTO lv_msg_text SEPARATED BY space.
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    MESSAGE |Fehler beim Löschen des TAs { gs_request-trkorr } aus der Import-Queue: | &&
+            |Bitte in der STMS -> { gs_request-tarsystem } den TA manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
@@ -1470,7 +1553,7 @@ FORM append_ta_to_queue USING lv_trkorr TYPE trkorr.
   DATA: lv_system TYPE tmssysnam,
         lv_domain TYPE tmsdomnam.
 
-  DATA: lv_msg_text TYPE c LENGTH 300.
+  DATA: lv_msg TYPE c LENGTH 300.
 
   lv_system = sy-sysid.
 *  CONCATENATE 'DOMAIN_' sy-sysid INTO lv_domain. " Wurde im ID3 nicht benötigt; hat dort sogar zu einem
@@ -1491,12 +1574,8 @@ FORM append_ta_to_queue USING lv_trkorr TYPE trkorr.
   IF sy-subrc <> 0.
 
     error = abap_true.
-
-    CONCATENATE 'Der TA' lv_trkorr 'konnte nicht zu der Import-Queue hinzugefügt werden: Bitte in der SE01 manuell löschen!'
-      INTO lv_msg_text SEPARATED BY space.
-
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    MESSAGE |Der TA { lv_trkorr } konnte nicht zu der Import-Queue hinzugefügt werden: | &&
+            |Bitte in der SE01 manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ENDIF.
@@ -1529,27 +1608,21 @@ FORM import_ta_request USING lv_trkorr TYPE trkorr.
       table_of_requests_is_empty = 2
       OTHERS                     = 3.
 
-  IF sy-subrc <> 0
+  IF   sy-subrc <> 0
     OR ls_exception-severity CA 'EA'.
 
     error = abap_true.
-
-    CONCATENATE 'Der TA' lv_trkorr 'konnte nicht importiert werden - bitte in der STMS ->'
-      lv_system 'manuell importieren oder löschen!'
-      INTO lv_msg_text SEPARATED BY space.
-
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'E'.
-
+    MESSAGE |Der TA { lv_trkorr } konnte nicht importiert werden: | &&
+            |Bitte in der STMS -> { lv_system } manuell importieren oder löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
 
   ELSEIF ls_exception-msgty CA 'EA'.
 
-    CONCATENATE 'Der TA' lv_trkorr 'konnte erfolgreich importiert werden, jedoch sind bei'
-      'der Aktivierung/Generierung der Entwicklungsobjekte Fehler aufgetreten, die manuell'
-      'behoben werden müssen - siehe Details in der STMS ->' lv_system '.'
-      INTO lv_msg_text SEPARATED BY space.
-
-    MESSAGE lv_msg_text TYPE 'I' DISPLAY LIKE 'W'.
+    error = abap_true.
+    MESSAGE |Der TA { lv_trkorr } konnte erfolgreich importiert werden, jedoch sind bei der | &&
+            |Aktivierung/Generierung der Entwicklungsobjekte Fehler aufgetreten, die manuell| &&
+            |behoben werden müssen - siehe Details in der STMS -> { lv_system }.| TYPE 'I' DISPLAY LIKE 'W'.
+    RETURN.
 
   ENDIF.
 
