@@ -1,7 +1,7 @@
 *&---------------------------------------------------------------------*
 *& Report  ZCAS_R_BACKUP_RECOVER
 *&---------------------------------------------------------------------*
-REPORT zz_r_backup_recover.
+REPORT zcas_r_backup_recover.
 
 "$. Region Declarations
 
