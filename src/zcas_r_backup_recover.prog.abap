@@ -31,6 +31,7 @@ DATA: p_backup_clnt_dir  TYPE saepfad VALUE cv_backup_clnt_dir,
       p_backup_incl_subs TYPE abap_bool VALUE abap_false,
       p_trkorr           TYPE e070-trkorr,
       p_devclass         TYPE tadir-devclass,
+      p_devobject        TYPE tadir-obj_name,
       p_chk_add_subs     TYPE abap_bool.
 
 " Recover-Parameter
@@ -253,6 +254,9 @@ MODULE pai_0100 INPUT.
     WHEN 'BACKUP_ADD_PKG'.
       PERFORM backup_add_devobjects.
 
+    WHEN 'BACKUP_ADD_OBJ'.
+      PERFORM backup_add_devobject.
+
     WHEN 'BACKUP_DEL_SEL_ROWS'.
       PERFORM backup_del_devobjects
         USING abap_true.
@@ -330,8 +334,7 @@ ENDFORM.                    "backup_chs_des
 *&---------------------------------------------------------------------*
 FORM backup_add_devobjects.
 
-  DATA: ls_package TYPE tdevc,
-        lt_package TYPE TABLE OF tdevc.
+  DATA: ls_package TYPE tdevc.
 
   WHILE error EQ abap_false.
 
@@ -343,7 +346,7 @@ FORM backup_add_devobjects.
         PERFORM backup_add_packages USING ls_package.
 
       WHEN 3.
-        PERFORM backup_add_devobj.
+        PERFORM backup_add_devobject.
 
       WHEN 4.
         PERFORM show_table.
@@ -363,16 +366,11 @@ ENDFORM.                    "backup_add_devobjects
 *----------------------------------------------------------------------*
 FORM backup_check_package CHANGING ls_package TYPE tdevc.
 
-  DATA: lt_prueba TYPE STANDARD TABLE OF dynpread,
-        ls_prueba TYPE dynpread.
-
   TRY.
       IF p_devclass CO ' _0'.
-
         error = abap_true.
         MESSAGE 'Bitte erst den Namen eines Entwicklungsobjekts eingeben.' TYPE 'I' DISPLAY LIKE 'E'.
         RETURN.
-
       ENDIF.
 
       SELECT SINGLE FROM tdevc
@@ -381,19 +379,21 @@ FORM backup_check_package CHANGING ls_package TYPE tdevc.
         INTO @ls_package.
 
       IF ls_package IS INITIAL.
-
         error = abap_true.
-        MESSAGE 'Das Entwicklungsobjekt ist in diesem System nicht vorhanden.' TYPE 'I' DISPLAY LIKE 'E'.
+        MESSAGE 'Das Entwicklungspaket ist in diesem System nicht vorhanden.' TYPE 'I' DISPLAY LIKE 'E'.
         RETURN.
-
       ENDIF.
 
       IF ls_package-as4user EQ 'SAP'.
-
         error = abap_true.
-        MESSAGE 'Das Entwicklungsobjekt gehört SAP und darf daher nicht gesichert werden.' TYPE 'I' DISPLAY LIKE 'E'.
+        MESSAGE 'Das Entwicklungspaket gehört SAP und darf daher nicht gesichert werden.' TYPE 'I' DISPLAY LIKE 'E'.
         RETURN.
+      ENDIF.
 
+      IF ls_package-devclass CP '$*'.
+        error = abap_true.
+        MESSAGE 'Temporäre Entwicklungspakete können nicht gesichert werden.' TYPE 'I' DISPLAY LIKE 'E'.
+        RETURN.
       ENDIF.
 
     CATCH cx_root.
@@ -420,8 +420,7 @@ FORM backup_add_packages USING ls_package TYPE tdevc.
         lt_r_package TYPE rseloption.
 
   " Neu hinzuzufügende Pakete
-  DATA: ls_r_new_package TYPE rsdsselopt,
-        lt_r_new_package TYPE rseloption.
+  DATA: lt_r_new_package TYPE rseloption.
 
   FIELD-SYMBOLS: <ls_outtab>      TYPE tadir,
                  <ls_new_package> TYPE tdevc.
@@ -502,15 +501,74 @@ ENDFORM.                    "backup_add_packages
 *&---------------------------------------------------------------------*
 *&      Form  backup_add_devobj
 *&---------------------------------------------------------------------*
-FORM backup_add_devobj.
+FORM backup_add_devobject.
 
   DATA: lv_msg_txt          TYPE c LENGTH 300,
         lv_no_outtab_before TYPE i,
         lv_no_outtab_added  TYPE string.
 
-  DATA: ls_devobj        TYPE tadir,
-        lt_devobj        TYPE TABLE OF tadir,
-        lt_package_tadir TYPE TABLE OF tadir.
+  lv_no_outtab_before = lines( gt_outtab ).
+
+  IF p_devobject CN ' _0'.
+
+    PERFORM backup_add_devobject_by_obj.
+
+  ELSEIF p_devclass CN ' _0'.
+
+    PERFORM backup_add_devobject_by_pck.
+
+  ELSE.
+
+    MESSAGE 'Bitte geben Sie entweder einen Paketnamen oder ein Entwicklungsobjekt an.' TYPE 'S'.
+    RETURN.
+
+  ENDIF.
+
+  lv_no_outtab_added = lines( gt_outtab ) - lv_no_outtab_before.
+
+  CONCATENATE lv_no_outtab_added 'Entwicklungsobjekte wurden hinzugefügt.'
+    INTO lv_msg_txt SEPARATED BY space.
+  MESSAGE lv_msg_txt TYPE 'S'.
+
+  IF p_devobject CN ' _0'.
+    PERFORM show_table.
+  ENDIF.
+
+ENDFORM.                    "backup_add_devobj
+*&---------------------------------------------------------------------*
+*&      Form  backup_add_devobject_by_obj
+*&---------------------------------------------------------------------*
+FORM backup_add_devobject_by_obj.
+
+  DATA: ls_devobj TYPE tadir.
+
+  IF line_exists( gt_outtab[ obj_name = p_devobject ] ).
+    MESSAGE 'Entwicklungsobjekt nicht hinzugefügt, da bereits vorhanden.' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE FROM tadir
+    FIELDS *
+    WHERE obj_name EQ @p_devobject
+    INTO @ls_devobj.
+
+  IF ls_devobj-devclass CP '$*'.
+    MESSAGE 'Temporäre Entwicklungsobjekte können nicht gesichert werden.' TYPE 'S'.
+    RETURN.
+  ELSEIF ls_devobj-author EQ 'SAP'.
+    MESSAGE 'Das Entwicklungsobjekt gehört SAP und darf daher nicht gesichert werden.' TYPE 'I' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  APPEND ls_devobj TO gt_outtab.
+
+ENDFORM. " backup_add_devobject_by_obj
+*&---------------------------------------------------------------------*
+*&      Form  backup_add_devobject_by_pck
+*&---------------------------------------------------------------------*
+FORM backup_add_devobject_by_pck.
+
+  DATA: lt_devobj        TYPE TABLE OF tadir.
 
   DATA: ls_r_package TYPE rsdsselopt,
         lt_r_package TYPE rseloption.
@@ -535,10 +593,8 @@ FORM backup_add_devobj.
   CLEAR: gt_package.
 
   IF lt_r_package IS INITIAL.
-
     MESSAGE 'Keine Entwicklungsobjekte hinzugefügt, da bereits vorhanden oder nicht selektierbar.' TYPE 'S'.
     RETURN.
-
   ENDIF.
 
   SELECT FROM tadir
@@ -548,30 +604,19 @@ FORM backup_add_devobj.
     INTO TABLE @lt_devobj.
 
   SORT lt_devobj BY obj_name ASCENDING.
-  lv_no_outtab_before = lines( gt_outtab ).
 
-  LOOP AT lt_devobj ASSIGNING <ls_package_tadir>
-    WHERE object EQ 'DEVC'.
+  LOOP AT lt_devobj ASSIGNING <ls_package_tadir> WHERE object EQ 'DEVC'.
 
     APPEND <ls_package_tadir> TO gt_outtab.
 
-    LOOP AT lt_devobj ASSIGNING <ls_devobj>
-      WHERE object NE 'DEVC'
-        AND devclass EQ <ls_package_tadir>-devclass.
-
+    LOOP AT lt_devobj ASSIGNING <ls_devobj> WHERE object   NE 'DEVC'
+                                              AND devclass EQ <ls_package_tadir>-devclass.
       APPEND <ls_devobj> TO gt_outtab.
-
     ENDLOOP.
 
   ENDLOOP.
 
-  lv_no_outtab_added = lines( gt_outtab ) - lv_no_outtab_before.
-
-  CONCATENATE lv_no_outtab_added 'Entwicklungsobjekte wurden hinzugefügt.'
-    INTO lv_msg_txt SEPARATED BY space.
-  MESSAGE lv_msg_txt TYPE 'S'.
-
-ENDFORM.                    "backup_add_devobj
+ENDFORM. " backup_add_devobj_by_pck
 *&---------------------------------------------------------------------*
 *&      Form  BACKUP_DEL_DEVOBJECTS
 *&---------------------------------------------------------------------*
@@ -639,6 +684,7 @@ FORM read_values.
       DATA(lt_dynpfields) = VALUE dynpread_tabtype( ( fieldname = 'P_BACKUP_CLNT_DIR' )
                                                     ( fieldname = 'E070-TRKORR' )
                                                     ( fieldname = 'TADIR-DEVCLASS' )
+                                                    ( fieldname = 'TADIR-OBJ_NAME' )
                                                     ( fieldname = 'P_BACKUP_INCL_SUBS' ) ).
 
     WHEN 'RECOVER_TAB'.
@@ -673,6 +719,7 @@ FORM read_values.
     p_backup_clnt_dir = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_CLNT_DIR'  ]-fieldvalue OPTIONAL ).
     p_trkorr          = VALUE #( lt_dynpfields[ fieldname = 'E070-TRKORR'        ]-fieldvalue OPTIONAL ).
     p_devclass        = VALUE #( lt_dynpfields[ fieldname = 'TADIR-DEVCLASS'     ]-fieldvalue OPTIONAL ).
+    p_devobject       = VALUE #( lt_dynpfields[ fieldname = 'TADIR-OBJ_NAME'     ]-fieldvalue OPTIONAL ).
     p_chk_add_subs    = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_INCL_SUBS' ]-fieldvalue OPTIONAL ).
     p_recover_file    = VALUE #( lt_dynpfields[ fieldname = 'P_RECOVER_FILE'     ]-fieldvalue OPTIONAL ).
     p_recover_dir     = VALUE #( lt_dynpfields[ fieldname = 'P_RECOVER_DIR'      ]-fieldvalue OPTIONAL ).
@@ -696,10 +743,6 @@ ENDFORM.
 *&      Form  BACKUP_EXECUTE
 *&---------------------------------------------------------------------*
 FORM backup_execute.
-
-  DATA: lt_prueba        TYPE STANDARD TABLE OF dynpread,
-        ls_prueba        TYPE dynpread,
-        ls_target_system TYPE dynpread.
 
   DATA: lv_srvr_file TYPE saepfad,
         lv_clnt_file TYPE saepfad.
@@ -855,11 +898,7 @@ ENDFORM.                    "backup_download_files
 *&---------------------------------------------------------------------*
 FORM recover_execute.
 
-  DATA: ls_prueba        TYPE dynpread,
-        ls_target_system TYPE dynpread,
-        ls_request       TYPE trwbo_request,
-        ls_new_request   TYPE trwbo_request_header,
-        lt_prueba        TYPE STANDARD TABLE OF dynpread.
+  DATA: ls_request       TYPE trwbo_request.
 
   DATA: lv_clnt_k_file TYPE saepfad,
         lv_clnt_r_file TYPE saepfad,
@@ -970,9 +1009,7 @@ ENDFORM.                    "recover_get_file
 *&---------------------------------------------------------------------*
 FORM recover_chs_des.
 
-  DATA: lv_sap_dir TYPE saepfad,
-        lv_length  TYPE i,
-        lv_last_c  TYPE c LENGTH 1.
+  DATA: lv_sap_dir TYPE saepfad.
 
   CALL 'C_SAPGPARAM'
     ID 'NAME'  FIELD cv_default_trans_dir
@@ -1005,9 +1042,7 @@ FORM recover_extract_ta CHANGING lv_clnt_k_file TYPE saepfad
 
   DATA: lv_lines   TYPE i,
         lv_length  TYPE i,
-        lv_ta_part TYPE saepfad,
-        lv_ta_num  TYPE saepfad,
-        lv_ta_ext  TYPE saepfad.
+        lv_ta_part TYPE saepfad.
 
   DATA: lv_clnt_dir_sep TYPE c LENGTH 1.
 
@@ -1126,8 +1161,7 @@ ENDFORM.                    "recover_upload_files
 FORM change_original_system USING    lv_trkorr  TYPE trkorr
                             CHANGING ls_request TYPE trwbo_request.
 
-  DATA: lv_msg_text  TYPE c LENGTH 300,
-        lv_srcsystem TYPE srcsystem.
+  DATA: lv_srcsystem TYPE srcsystem.
 
   DATA: lt_r_objname TYPE RANGE OF trobj_name,
         ls_r_objname LIKE LINE OF  lt_r_objname.
@@ -1307,12 +1341,8 @@ ENDFORM.                    "create_ta_request
 *&---------------------------------------------------------------------*
 FORM append_devobjs_to_tr.
 
-  DATA: ls_e071  TYPE trwbo_s_e071,
-        lt_e071  TYPE trwbo_t_e071,
-        lt_tadir TYPE TABLE OF tadir.
-
-  DATA: ls_r_devclass TYPE rsdsselopt,
-        lt_r_devclass TYPE rseloption.
+  DATA: ls_e071 TYPE trwbo_s_e071,
+        lt_e071 TYPE trwbo_t_e071.
 
   FIELD-SYMBOLS: <ls_outtab> TYPE tadir.
 
@@ -1476,8 +1506,7 @@ FORM remove_tr_from_queue.
 
   DATA: lv_command LIKE stpa-command.
 
-  DATA: lv_lines         TYPE p DECIMALS 0,
-        lv_counter       TYPE i VALUE 0,
+  DATA: lv_counter       TYPE i VALUE 0,
         lv_current_retry TYPE i VALUE 0,
         lv_max_retry     TYPE i VALUE 60,
         lv_interval      TYPE i VALUE 5.
@@ -1553,8 +1582,6 @@ FORM append_ta_to_queue USING lv_trkorr TYPE trkorr.
   DATA: lv_system TYPE tmssysnam,
         lv_domain TYPE tmsdomnam.
 
-  DATA: lv_msg TYPE c LENGTH 300.
-
   lv_system = sy-sysid.
 *  CONCATENATE 'DOMAIN_' sy-sysid INTO lv_domain. " Wurde im ID3 nicht benötigt; hat dort sogar zu einem
 *                                                 " Fehler geführt, da die Domain nicht gefunden wurde.
@@ -1588,8 +1615,6 @@ FORM import_ta_request USING lv_trkorr TYPE trkorr.
 
   DATA: lv_system    TYPE tmssysnam,
         ls_exception TYPE stmscalert.
-
-  DATA: lv_msg_text TYPE c LENGTH 300.
 
   lv_system = sy-sysid.
 
