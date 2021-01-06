@@ -120,7 +120,7 @@
      <HEADER>
       <PROGRAM>ZCAS_R_BACKUP_RECOVER</PROGRAM>
       <SCREEN>0101</SCREEN>
-      <LANGUAGE>D</LANGUAGE>
+      <LANGUAGE>E</LANGUAGE>
       <DESCRIPT>Backup: Quellcode sichern</DESCRIPT>
       <TYPE>I</TYPE>
       <NEXTSCREEN>0101</NEXTSCREEN>
@@ -136,10 +136,10 @@
        <TYPE>CUST_CTRL</TYPE>
        <NAME>BCALV_BACKUP_0100_CONT1</NAME>
        <ELEMENT_OF>SCREEN</ELEMENT_OF>
-       <LINE>013</LINE>
+       <LINE>014</LINE>
        <COLUMN>001</COLUMN>
        <LENGTH>100</LENGTH>
-       <HEIGHT>019</HEIGHT>
+       <HEIGHT>018</HEIGHT>
        <C_RESIZE_V>X</C_RESIZE_V>
        <C_RESIZE_H>X</C_RESIZE_H>
        <C_LINE_MIN>001</C_LINE_MIN>
@@ -262,10 +262,27 @@
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>CHECK</TYPE>
+       <NAME>P_CHK_DEL_TR</NAME>
+       <TEXT>Importqueue_leeren</TEXT>
+       <ICON_QINFO>Unterpakete_sichern</ICON_QINFO>
+       <ICON_QSPEC>X</ICON_QSPEC>
+       <LINE>006</LINE>
+       <COLUMN>021</COLUMN>
+       <LENGTH>043</LENGTH>
+       <VISLENGTH>021</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_ODER</NAME>
        <TEXT>ODER</TEXT>
-       <LINE>007</LINE>
+       <LINE>008</LINE>
        <COLUMN>001</COLUMN>
        <LENGTH>004</LENGTH>
        <VISLENGTH>004</VISLENGTH>
@@ -280,7 +297,7 @@
        <TYPE>TEXT</TYPE>
        <NAME>LBL_PCKG_NAME</NAME>
        <TEXT>Paketname:</TEXT>
-       <LINE>007</LINE>
+       <LINE>008</LINE>
        <COLUMN>007</COLUMN>
        <LENGTH>010</LENGTH>
        <VISLENGTH>010</VISLENGTH>
@@ -295,7 +312,7 @@
        <TYPE>TEMPLATE</TYPE>
        <NAME>TADIR-DEVCLASS</NAME>
        <TEXT>____________________________________________</TEXT>
-       <LINE>007</LINE>
+       <LINE>008</LINE>
        <COLUMN>021</COLUMN>
        <LENGTH>044</LENGTH>
        <VISLENGTH>044</VISLENGTH>
@@ -320,7 +337,7 @@
        <ICON_QINFO>Paketname(n)_hinzufügen</ICON_QINFO>
        <ICON_QSPEC>X</ICON_QSPEC>
        <WITH_ICON>X</WITH_ICON>
-       <LINE>007</LINE>
+       <LINE>008</LINE>
        <COLUMN>069</COLUMN>
        <LENGTH>044</LENGTH>
        <VISLENGTH>015</VISLENGTH>
@@ -338,7 +355,7 @@
        <TEXT>Unterpakete_hinzuf.</TEXT>
        <ICON_QINFO>Unterpakete_sichern</ICON_QINFO>
        <ICON_QSPEC>X</ICON_QSPEC>
-       <LINE>008</LINE>
+       <LINE>009</LINE>
        <COLUMN>021</COLUMN>
        <LENGTH>044</LENGTH>
        <VISLENGTH>021</VISLENGTH>
@@ -353,7 +370,7 @@
        <TYPE>TEXT</TYPE>
        <NAME>LBL_ODER_2</NAME>
        <TEXT>ODER</TEXT>
-       <LINE>010</LINE>
+       <LINE>011</LINE>
        <COLUMN>001</COLUMN>
        <LENGTH>004</LENGTH>
        <VISLENGTH>004</VISLENGTH>
@@ -368,7 +385,7 @@
        <TYPE>TEXT</TYPE>
        <NAME>LBL_OBJ_NAME</NAME>
        <TEXT>Objektname:</TEXT>
-       <LINE>010</LINE>
+       <LINE>011</LINE>
        <COLUMN>007</COLUMN>
        <LENGTH>011</LENGTH>
        <VISLENGTH>011</VISLENGTH>
@@ -383,7 +400,7 @@
        <TYPE>TEMPLATE</TYPE>
        <NAME>TADIR-OBJ_NAME</NAME>
        <TEXT>______________________________________________</TEXT>
-       <LINE>010</LINE>
+       <LINE>011</LINE>
        <COLUMN>021</COLUMN>
        <LENGTH>046</LENGTH>
        <VISLENGTH>046</VISLENGTH>
@@ -404,7 +421,7 @@
        <ICON_QINFO>Paketname(n)_hinzufügen</ICON_QINFO>
        <ICON_QSPEC>X</ICON_QSPEC>
        <WITH_ICON>X</WITH_ICON>
-       <LINE>010</LINE>
+       <LINE>011</LINE>
        <COLUMN>069</COLUMN>
        <LENGTH>044</LENGTH>
        <VISLENGTH>015</VISLENGTH>
@@ -419,7 +436,7 @@
        <TYPE>TEXT</TYPE>
        <NAME>LBL_PACKAGES_TO_BE_BACKUPPED</NAME>
        <TEXT>Zu_sichernde_Entwicklungsobjekte:</TEXT>
-       <LINE>012</LINE>
+       <LINE>013</LINE>
        <COLUMN>001</COLUMN>
        <LENGTH>033</LENGTH>
        <VISLENGTH>033</VISLENGTH>
@@ -437,7 +454,7 @@
        <ICON_QINFO>Selektierte_Einträge_löschen</ICON_QINFO>
        <ICON_QSPEC>X</ICON_QSPEC>
        <WITH_ICON>X</WITH_ICON>
-       <LINE>012</LINE>
+       <LINE>013</LINE>
        <COLUMN>069</COLUMN>
        <LENGTH>051</LENGTH>
        <VISLENGTH>015</VISLENGTH>
@@ -457,7 +474,7 @@
        <ICON_QINFO>Alle_Einträge_löschen</ICON_QINFO>
        <ICON_QSPEC>X</ICON_QSPEC>
        <WITH_ICON>X</WITH_ICON>
-       <LINE>012</LINE>
+       <LINE>013</LINE>
        <COLUMN>086</COLUMN>
        <LENGTH>044</LENGTH>
        <VISLENGTH>015</VISLENGTH>
@@ -816,18 +833,6 @@
      <LENGTH>34</LENGTH>
     </item>
    </TPOOL>
-   <I18N_TPOOL>
-    <item>
-     <LANGUAGE>D</LANGUAGE>
-     <TEXTPOOL>
-      <item>
-       <ID>R</ID>
-       <ENTRY>Backup and Recovery of Source Code [1.0.0]</ENTRY>
-       <LENGTH>42</LENGTH>
-      </item>
-     </TEXTPOOL>
-    </item>
-   </I18N_TPOOL>
   </asx:values>
  </asx:abap>
 </abapGit>

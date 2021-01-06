@@ -1,5 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Report  ZCAS_R_BACKUP_RECOVER
+*& Report  ZCAS_R_BACKUP_RECOVER [06.01.2021-001]
 *&---------------------------------------------------------------------*
 REPORT zcas_r_backup_recover.
 
@@ -30,6 +30,7 @@ DATA: gs_request      TYPE e070,
 DATA: p_backup_clnt_dir  TYPE saepfad VALUE cv_backup_clnt_dir,
       p_backup_incl_subs TYPE abap_bool VALUE abap_false,
       p_trkorr           TYPE e070-trkorr,
+      p_chk_del_tr       TYPE abap_bool VALUE abap_true,
       p_devclass         TYPE tadir-devclass,
       p_devobject        TYPE tadir-obj_name,
       p_chk_add_subs     TYPE abap_bool.
@@ -75,7 +76,7 @@ MODULE on_value_request_trkorr INPUT.
 
   SELECT FROM e070
     FIELDS *
-    WHERE trstatus EQ 'D'
+    WHERE trstatus EQ @sctsc_state_changeable
       AND as4user  EQ @sy-uname
       AND strkorr  EQ @space
     INTO TABLE @DATA(lt_help_values).
@@ -683,6 +684,7 @@ FORM read_values.
       DATA(lv_dynnr) = '0101'.
       DATA(lt_dynpfields) = VALUE dynpread_tabtype( ( fieldname = 'P_BACKUP_CLNT_DIR' )
                                                     ( fieldname = 'E070-TRKORR' )
+                                                    ( fieldname = 'P_CHK_DEL_TR' )
                                                     ( fieldname = 'TADIR-DEVCLASS' )
                                                     ( fieldname = 'TADIR-OBJ_NAME' )
                                                     ( fieldname = 'P_BACKUP_INCL_SUBS' ) ).
@@ -718,6 +720,7 @@ FORM read_values.
 
     p_backup_clnt_dir = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_CLNT_DIR'  ]-fieldvalue OPTIONAL ).
     p_trkorr          = VALUE #( lt_dynpfields[ fieldname = 'E070-TRKORR'        ]-fieldvalue OPTIONAL ).
+    p_chk_del_tr      = VALUE #( lt_dynpfields[ fieldname = 'P_CHK_DEL_TR'       ]-fieldvalue OPTIONAL ).
     p_devclass        = VALUE #( lt_dynpfields[ fieldname = 'TADIR-DEVCLASS'     ]-fieldvalue OPTIONAL ).
     p_devobject       = VALUE #( lt_dynpfields[ fieldname = 'TADIR-OBJ_NAME'     ]-fieldvalue OPTIONAL ).
     p_chk_add_subs    = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_INCL_SUBS' ]-fieldvalue OPTIONAL ).
@@ -1435,12 +1438,16 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM release_tr.
 
+  CHECK gs_request-trstatus NE sctsc_state_released.
+
   DATA(lt_requests) = VALUE trwbo_request_headers( ( CORRESPONDING #( gs_request ) ) ).
   APPEND LINES OF gt_sub_requests TO lt_requests.
 
   SORT lt_requests BY strkorr DESCENDING.
 
   LOOP AT lt_requests ASSIGNING FIELD-SYMBOL(<ls_request>).
+
+    CHECK <ls_request>-trstatus NE sctsc_state_released.
 
     TRY.
         CALL FUNCTION 'TR_RELEASE_REQUEST'
@@ -1488,12 +1495,10 @@ FORM release_tr.
     ENDTRY.
 
     IF sy-subrc <> 0.
-
       error = abap_true.
       MESSAGE |TA { <ls_request>-trkorr } konnte nicht freigegeben werden.| &&
               |Bitte in der SE01 -> { sy-uname } den TA ggf. manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
       RETURN.
-
     ENDIF.
 
   ENDLOOP.
@@ -1511,15 +1516,15 @@ FORM remove_tr_from_queue.
         lv_max_retry     TYPE i VALUE 60,
         lv_interval      TYPE i VALUE 5.
 
+  CHECK p_chk_del_tr EQ abap_true.
+
   WHILE lv_counter = 0
     AND lv_current_retry <= lv_max_retry.
 
     ADD 1 TO lv_current_retry.
 
     IF lv_current_retry > 1.
-
       WAIT UP TO lv_interval SECONDS.
-
     ENDIF.
 
     CALL FUNCTION 'TMS_MGR_GREP_TRANSPORT_QUEUE'
@@ -1538,16 +1543,23 @@ FORM remove_tr_from_queue.
         read_import_queue_failed = 2
         OTHERS                   = 3.
 
+    " Transport has been released already, thus we
+    " don't need to delete it from the import queue
+    IF gs_request-trstatus EQ sctsc_state_released.
+      EXIT.
+    ENDIF.
+
   ENDWHILE.
 
-  IF lv_counter = 0.
-
+  IF    lv_counter = 0
+    AND gs_request-trstatus NE sctsc_state_released.
     error = abap_true.
     MESSAGE |Fehler beim Auslesen des TAs { gs_request-trkorr } aus der Import-Queue: | &&
             |Bitte in der STMS -> { gs_request-tarsystem } den TA manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
-
   ENDIF.
+
+  CHECK lv_counter > 0.
 
   lv_command = 'DELFROMBUFFER'.
 
@@ -1565,12 +1577,10 @@ FORM remove_tr_from_queue.
       OTHERS                     = 3.
 
   IF sy-subrc <> 0.
-
     error = abap_true.
     MESSAGE |Fehler beim Löschen des TAs { gs_request-trkorr } aus der Import-Queue: | &&
             |Bitte in der STMS -> { gs_request-tarsystem } den TA manuell löschen!| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
-
   ENDIF.
 
 ENDFORM.                    "remove_ta_from_queue
