@@ -264,8 +264,8 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>CHECK</TYPE>
        <NAME>P_CHK_DEL_TR</NAME>
-       <TEXT>Importqueue_leeren</TEXT>
-       <ICON_QINFO>Unterpakete_sichern</ICON_QINFO>
+       <TEXT>Importqueue_leeren_</TEXT>
+       <ICON_QINFO>Importqueue_leeren</ICON_QINFO>
        <ICON_QSPEC>X</ICON_QSPEC>
        <LINE>006</LINE>
        <COLUMN>021</COLUMN>
