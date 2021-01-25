@@ -1,5 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Report  ZCAS_R_BACKUP_RECOVER [06.01.2021-001]
+*& Report  ZCAS_R_BACKUP_RECOVER [25.01.2021-001]
 *&---------------------------------------------------------------------*
 REPORT zcas_r_backup_recover.
 
@@ -1194,7 +1194,7 @@ FORM change_original_system USING    lv_trkorr  TYPE trkorr
 
   ENDIF.
 
-  LOOP AT ls_request-objects ASSIGNING <ls_object>.
+  LOOP AT ls_request-objects ASSIGNING <ls_object> WHERE pgmid NE 'CORR'.
 
     ls_r_objname-sign   = 'I'.
     ls_r_objname-option = 'EQ'.
