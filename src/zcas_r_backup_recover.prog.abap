@@ -1,5 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Report  ZCAS_R_BACKUP_RECOVER [25.01.2021-001]
+*& Report  ZCAS_R_BACKUP_RECOVER [26.01.2021-001]
 *&---------------------------------------------------------------------*
 REPORT zcas_r_backup_recover.
 
@@ -99,7 +99,7 @@ MODULE on_value_request_trkorr INPUT.
     MESSAGE 'Build of Search Help-Pop Up failed.' TYPE 'E' DISPLAY LIKE 'I'.
   ENDIF.
 
-  DATA(lt_dynpfields) = VALUE dynpread_tabtype( ( fieldname = 'E070-TRKORR'
+  DATA(lt_dynpfields) = VALUE dynpread_tabtype( ( fieldname = 'P_TRKORR'
                                                   fieldvalue = VALUE #( lt_results[ 1 ]-fieldval OPTIONAL ) ) ).
 
   CALL FUNCTION 'DYNP_VALUES_UPDATE'
@@ -210,6 +210,8 @@ MODULE pbo_0100 OUTPUT.
     PERFORM show_table.
 
   ENDIF.
+
+  DATA(old_screen_id) = screen_id.
 
   CASE main_tabstrip-activetab.
     WHEN 'BACKUP_TAB'.
@@ -683,10 +685,10 @@ FORM read_values.
     WHEN 'BACKUP_TAB'.
       DATA(lv_dynnr) = '0101'.
       DATA(lt_dynpfields) = VALUE dynpread_tabtype( ( fieldname = 'P_BACKUP_CLNT_DIR' )
-                                                    ( fieldname = 'E070-TRKORR' )
+                                                    ( fieldname = 'P_TRKORR' )
                                                     ( fieldname = 'P_CHK_DEL_TR' )
-                                                    ( fieldname = 'TADIR-DEVCLASS' )
-                                                    ( fieldname = 'TADIR-OBJ_NAME' )
+                                                    ( fieldname = 'P_DEVCLASS' )
+                                                    ( fieldname = 'P_DEVOBJECT' )
                                                     ( fieldname = 'P_BACKUP_INCL_SUBS' ) ).
 
     WHEN 'RECOVER_TAB'.
@@ -719,10 +721,10 @@ FORM read_values.
   IF sy-subrc = 0.
 
     p_backup_clnt_dir = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_CLNT_DIR'  ]-fieldvalue OPTIONAL ).
-    p_trkorr          = VALUE #( lt_dynpfields[ fieldname = 'E070-TRKORR'        ]-fieldvalue OPTIONAL ).
+    p_trkorr          = VALUE #( lt_dynpfields[ fieldname = 'P_TRKORR'           ]-fieldvalue OPTIONAL ).
     p_chk_del_tr      = VALUE #( lt_dynpfields[ fieldname = 'P_CHK_DEL_TR'       ]-fieldvalue OPTIONAL ).
-    p_devclass        = VALUE #( lt_dynpfields[ fieldname = 'TADIR-DEVCLASS'     ]-fieldvalue OPTIONAL ).
-    p_devobject       = VALUE #( lt_dynpfields[ fieldname = 'TADIR-OBJ_NAME'     ]-fieldvalue OPTIONAL ).
+    p_devclass        = VALUE #( lt_dynpfields[ fieldname = 'P_DEVCLASS'         ]-fieldvalue OPTIONAL ).
+    p_devobject       = VALUE #( lt_dynpfields[ fieldname = 'P_DEVOBJECT'        ]-fieldvalue OPTIONAL ).
     p_chk_add_subs    = VALUE #( lt_dynpfields[ fieldname = 'P_BACKUP_INCL_SUBS' ]-fieldvalue OPTIONAL ).
     p_recover_file    = VALUE #( lt_dynpfields[ fieldname = 'P_RECOVER_FILE'     ]-fieldvalue OPTIONAL ).
     p_recover_dir     = VALUE #( lt_dynpfields[ fieldname = 'P_RECOVER_DIR'      ]-fieldvalue OPTIONAL ).
@@ -763,6 +765,29 @@ FORM backup_execute.
     error = abap_true.
     MESSAGE |Bitte definieren Sie einen Transport oder zu sichernde Entwicklungsobjekte.| TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
+
+  ELSEIF p_backup_clnt_dir EQ 'C:\'.
+
+    DATA(lv_answer) = VALUE numc1( ).
+
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = |Speicherort geeignet?|
+        text_question         = |C:\\ ist ggf. aufgrund unzureichender Berechtigungen auf dem Betriebssystem| &&
+                                | kein geeigneter Speicherort. Möchten Sie dennoch fortfahren?|
+        display_cancel_button = abap_false
+      IMPORTING
+        answer                = lv_answer
+      EXCEPTIONS
+        text_not_found        = 1
+        OTHERS                = 2.
+
+    IF   sy-subrc <> 0
+      OR lv_answer = 2.
+      p_backup_clnt_dir = cv_backup_clnt_dir.
+      error = abap_true.
+      RETURN.
+    ENDIF.
 
   ENDIF.
 

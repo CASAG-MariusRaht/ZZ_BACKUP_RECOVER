@@ -14,7 +14,7 @@
      <HEADER>
       <PROGRAM>ZCAS_R_BACKUP_RECOVER</PROGRAM>
       <SCREEN>0100</SCREEN>
-      <LANGUAGE>D</LANGUAGE>
+      <LANGUAGE>E</LANGUAGE>
       <DESCRIPT>Hauptmaske: Sichern und Wiederherstellen</DESCRIPT>
       <TYPE>M</TYPE>
       <NEXTSCREEN>0100</NEXTSCREEN>
@@ -230,7 +230,7 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
-       <NAME>E070-TRKORR</NAME>
+       <NAME>P_TRKORR</NAME>
        <TEXT>Transport:</TEXT>
        <LINE>005</LINE>
        <COLUMN>007</COLUMN>
@@ -238,8 +238,6 @@
        <VISLENGTH>010</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
-       <FROM_DICT>X</FROM_DICT>
-       <MODIFIC>F</MODIFIC>
        <REQU_ENTRY>N</REQU_ENTRY>
        <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
@@ -247,7 +245,7 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
-       <NAME>E070-TRKORR</NAME>
+       <NAME>P_TRKORR</NAME>
        <TEXT>____________________</TEXT>
        <LINE>005</LINE>
        <COLUMN>021</COLUMN>
@@ -255,7 +253,6 @@
        <VISLENGTH>020</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
-       <FROM_DICT>X</FROM_DICT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
       </RPY_DYFATC>
@@ -310,7 +307,7 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
-       <NAME>TADIR-DEVCLASS</NAME>
+       <NAME>P_DEVCLASS</NAME>
        <TEXT>____________________________________________</TEXT>
        <LINE>008</LINE>
        <COLUMN>021</COLUMN>
@@ -318,14 +315,10 @@
        <VISLENGTH>044</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
-       <FROM_DICT>X</FROM_DICT>
-       <MODIFIC>X</MODIFIC>
        <PARAM_ID>DVC</PARAM_ID>
-       <FOREIGNKEY>X</FOREIGNKEY>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
        <POSS_ENTRY>2</POSS_ENTRY>
-       <DICT_I_FKY>X</DICT_I_FKY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -398,7 +391,7 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
-       <NAME>TADIR-OBJ_NAME</NAME>
+       <NAME>P_DEVOBJECT</NAME>
        <TEXT>______________________________________________</TEXT>
        <LINE>011</LINE>
        <COLUMN>021</COLUMN>
@@ -406,8 +399,6 @@
        <VISLENGTH>046</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
-       <FROM_DICT>X</FROM_DICT>
-       <MODIFIC>X</MODIFIC>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
       </RPY_DYFATC>
@@ -515,7 +506,7 @@
        <LINE>PROCESS ON VALUE-REQUEST.</LINE>
       </RPY_DYFLOW>
       <RPY_DYFLOW>
-       <LINE>  FIELD e070-trkorr</LINE>
+       <LINE>  FIELD p_trkorr</LINE>
       </RPY_DYFLOW>
       <RPY_DYFLOW>
        <LINE>  MODULE on_value_request_trkorr.</LINE>
@@ -721,6 +712,12 @@
     </STA>
     <FUN>
      <RSMPE_FUNT>
+      <CODE>ENTER</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>ENTER</FUN_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
       <CODE>EXEC</CODE>
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
@@ -795,6 +792,10 @@
      </RSMPE_PFK>
     </PFK>
     <SET>
+     <RSMPE_STAF>
+      <STATUS>MAIN100</STATUS>
+      <FUNCTION>ENTER</FUNCTION>
+     </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>MAIN100</STATUS>
       <FUNCTION>EXEC</FUNCTION>
