@@ -125,7 +125,7 @@
       <TYPE>I</TYPE>
       <NEXTSCREEN>0101</NEXTSCREEN>
       <LINES>031</LINES>
-      <COLUMNS>119</COLUMNS>
+      <COLUMNS>116</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -172,7 +172,7 @@
        <LINE>001</LINE>
        <COLUMN>015</COLUMN>
        <LENGTH>255</LENGTH>
-       <VISLENGTH>068</VISLENGTH>
+       <VISLENGTH>069</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
@@ -189,7 +189,7 @@
        <ICON_QSPEC>X</ICON_QSPEC>
        <WITH_ICON>X</WITH_ICON>
        <LINE>001</LINE>
-       <COLUMN>085</COLUMN>
+       <COLUMN>086</COLUMN>
        <LENGTH>042</LENGTH>
        <VISLENGTH>015</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -202,11 +202,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_SEPARATOR</NAME>
-       <TEXT>---------------------------------------------------------------------------------------------------</TEXT>
+       <TEXT>----------------------------------------------------------------------------------------------------</TEXT>
        <LINE>002</LINE>
        <COLUMN>001</COLUMN>
-       <LENGTH>099</LENGTH>
-       <VISLENGTH>099</VISLENGTH>
+       <LENGTH>100</LENGTH>
+       <VISLENGTH>100</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
@@ -517,7 +517,7 @@
      <HEADER>
       <PROGRAM>ZCAS_R_BACKUP_RECOVER</PROGRAM>
       <SCREEN>0102</SCREEN>
-      <LANGUAGE>D</LANGUAGE>
+      <LANGUAGE>E</LANGUAGE>
       <DESCRIPT>Recover: Quellcode wiederherstellen</DESCRIPT>
       <TYPE>I</TYPE>
       <NEXTSCREEN>0102</NEXTSCREEN>
@@ -651,15 +651,30 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>CHECK</TYPE>
        <NAME>P_OVERWRITE_ORIG</NAME>
-       <TEXT>Originale_überschreiben____________________________________________________________________</TEXT>
+       <TEXT>Originale_überschreiben</TEXT>
        <ICON_QINFO>Entwicklungsobj._überschreiben</ICON_QINFO>
        <ICON_QSPEC>X</ICON_QSPEC>
        <LINE>005</LINE>
        <COLUMN>001</COLUMN>
-       <LENGTH>127</LENGTH>
+       <LENGTH>059</LENGTH>
        <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>RECOVER_OVWR_ORIG</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>CHECK</TYPE>
+       <NAME>P_ONLY_APPEND</NAME>
+       <TEXT>Nur_an_Import-Queue_anhängen</TEXT>
+       <LINE>006</LINE>
+       <COLUMN>001</COLUMN>
+       <LENGTH>030</LENGTH>
+       <VISLENGTH>030</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
