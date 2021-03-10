@@ -15,7 +15,7 @@
       <PROGRAM>ZCAS_R_BACKUP_RECOVER</PROGRAM>
       <SCREEN>0100</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Hauptmaske: Sichern und Wiederherstellen</DESCRIPT>
+      <DESCRIPT>Main Screen: Backup and Recover</DESCRIPT>
       <TYPE>M</TYPE>
       <NEXTSCREEN>0100</NEXTSCREEN>
       <LINES>028</LINES>
@@ -110,7 +110,6 @@
       <RPY_DYFLOW>
        <LINE>  MODULE exit AT EXIT-COMMAND.</LINE>
       </RPY_DYFLOW>
-      <RPY_DYFLOW/>
       <RPY_DYFLOW>
        <LINE>  MODULE pai_0100.</LINE>
       </RPY_DYFLOW>
@@ -121,7 +120,7 @@
       <PROGRAM>ZCAS_R_BACKUP_RECOVER</PROGRAM>
       <SCREEN>0101</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Backup: Quellcode sichern</DESCRIPT>
+      <DESCRIPT>Backup: Backup source code</DESCRIPT>
       <TYPE>I</TYPE>
       <NEXTSCREEN>0101</NEXTSCREEN>
       <LINES>031</LINES>
@@ -518,7 +517,7 @@
       <PROGRAM>ZCAS_R_BACKUP_RECOVER</PROGRAM>
       <SCREEN>0102</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Recover: Quellcode wiederherstellen</DESCRIPT>
+      <DESCRIPT>Recover: Recover source code</DESCRIPT>
       <TYPE>I</TYPE>
       <NEXTSCREEN>0102</NEXTSCREEN>
       <LINES>015</LINES>

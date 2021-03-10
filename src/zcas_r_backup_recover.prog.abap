@@ -225,8 +225,6 @@ MODULE pbo_0100 OUTPUT.
 
   ENDIF.
 
-  DATA(old_screen_id) = screen_id.
-
   CASE main_tabstrip-activetab.
     WHEN 'BACKUP_TAB'.
       screen_id = '101'.
