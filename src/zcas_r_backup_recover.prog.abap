@@ -52,14 +52,15 @@ DATA: p_recover_file   TYPE saepfad,
 *       MAIN                                                          *
 *---------------------------------------------------------------------*
 
-PERFORM init.
-
 CALL SCREEN 100.
 
 *&---------------------------------------------------------------------*
 *&      Form  INIT
 *&---------------------------------------------------------------------*
 FORM init.
+
+  CHECK gt_dynpfields_backup  IS INITIAL
+    AND gt_dynpfields_recover IS INITIAL.
 
   CALL 'C_SAPGPARAM'
     ID 'NAME'  FIELD p_recover_dir
@@ -144,6 +145,8 @@ MODULE pbo_0100 OUTPUT.
   SET PF-STATUS 'MAIN100'.
 
   IF gr_container IS INITIAL.
+
+    PERFORM init.
 
     CREATE OBJECT gr_container
       EXPORTING
