@@ -843,6 +843,210 @@
    </CUA>
    <TPOOL>
     <item>
+     <ID>I</ID>
+     <KEY>001</KEY>
+     <ENTRY>Transport Request</ENTRY>
+     <LENGTH>27</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>002</KEY>
+     <ENTRY>Build of Search Help-Pop Up failed</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>003</KEY>
+     <ENTRY>Fehler beim Anlegen eines TAs</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>004</KEY>
+     <ENTRY>Fehler beim Sperren des TAs &amp;1. Bitte in der SE01 -&gt; &amp;2 den TA manuell löschen!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>005</KEY>
+     <ENTRY>Fehler beim Hinzufügen der Objekte zum TA &amp;1. Bitte in der SE01 -&gt; &amp;2 den TA manuell löschen!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>006</KEY>
+     <ENTRY>Fehler beim Lesen des TAs &amp;1 (sy-subrc = &amp;2)</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>007</KEY>
+     <ENTRY>Untergeordnete TAs werden nicht unterstützt! Der TA &amp;1 ist dem TA &amp;2 untergeordnet.</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>008</KEY>
+     <ENTRY>Fehler beim Auslesen des TAs &amp;1 aus der Import-Queue: Bitte in der STMS -&gt; &amp;2 den TA manuell löschen!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>009</KEY>
+     <ENTRY>Fehler beim Löschen des TAs &amp;1 aus der Import-Queue: Bitte in der STMS -&gt; &amp;2 den TA manuell löschen!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>010</KEY>
+     <ENTRY>Der TA &amp;1 konnte nicht zu der Import-Queue hinzugefügt werden: Bitte in der SE01 manuell löschen!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>011</KEY>
+     <ENTRY>Der TA &amp;1 konnte nicht importiert werden: Bitte in der STMS -&gt; &amp;2 manuell importieren oder löschen!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>012</KEY>
+     <ENTRY>TA &amp;1 erfolgreich importiert, aber manuell zu behebende Fehler aufgetreten - s. STMS -&gt; &amp;2!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>013</KEY>
+     <ENTRY>Bitte erst den Namen eines Entwicklungsobjekts eingeben!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>014</KEY>
+     <ENTRY>Das Entwicklungspaket ist in diesem System nicht vorhanden</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>015</KEY>
+     <ENTRY>Das Entwicklungspaket gehört SAP und darf daher nicht gesichert werden.</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>016</KEY>
+     <ENTRY>Temporäre Entwicklungspakete können nicht gesichert werden.</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>017</KEY>
+     <ENTRY>Die Dynpro-Felder konnten nicht ausgelesen werden!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>018</KEY>
+     <ENTRY>Bitte geben Sie entweder einen Paketnamen oder ein Entwicklungsobjekt an!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>019</KEY>
+     <ENTRY>Entwicklungsobjekte wurden hinzugefügt</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>020</KEY>
+     <ENTRY>Entwicklungsobjekt nicht hinzugefügt, da bereits vorhanden</ENTRY>
+     <LENGTH>118</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>021</KEY>
+     <ENTRY>Temporäre Entwicklungsobjekte können nicht gesichert werden</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>022</KEY>
+     <ENTRY>Das Entwicklungsobjekt gehört SAP und darf daher nicht gesichert werden</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>023</KEY>
+     <ENTRY>Keine Entwicklungsobjekte hinzugefügt, da bereits vorhanden oder nicht selektierbar</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>024</KEY>
+     <ENTRY>Entwicklungsobjekte wurden entfernt</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>025</KEY>
+     <ENTRY>Backup wurde erfolgreich erstellt</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>026</KEY>
+     <ENTRY>Bitte geben Sie den lokalen Speicherort der Sicherungsdateien an</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>027</KEY>
+     <ENTRY>Bitte definieren Sie einen Transport oder zu sichernde Entwicklungsobjekte</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>028</KEY>
+     <ENTRY>Speicherort geeignet?</ENTRY>
+     <LENGTH>25</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>029</KEY>
+     <ENTRY>&quot;C:\&quot; ist ggf. aufgrund fehlender Berechtigungen auf Betriebssystem kein geeigneter Speicherort. Dennoch fortfahren?</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>030</KEY>
+     <ENTRY>Wiederherstellung wurde erfolgreich durchgeführt</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>031</KEY>
+     <ENTRY>Bitte geben Sie den lokalen Speicherort der Wiederherstellungsdatei an</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>032</KEY>
+     <ENTRY>Bitte geben Sie den internen Pfad zum Wiederherstellungsordner an</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>033</KEY>
+     <ENTRY>Die Datei-Übertragung ist fehlgeschlagen!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>034</KEY>
+     <ENTRY>TA &amp;1 konnte nicht ausgelesen werden!</ENTRY>
+     <LENGTH>132</LENGTH>
+    </item>
+    <item>
      <ID>R</ID>
      <ENTRY>Backup and Recovery of Source Code</ENTRY>
      <LENGTH>34</LENGTH>
